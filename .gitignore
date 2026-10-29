@@ -4,3 +4,4 @@ npm-cache
 tmp
 dist
 coverage
+/.vs
