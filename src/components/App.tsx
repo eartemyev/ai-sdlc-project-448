@@ -16,8 +16,22 @@ const describeSource = (source: AccessSource, config: Config): string => {
 export const App = () => {
   const { config, checkAccess, grantPermission, revokePermission, exportJson, importJson } =
     useSimulator();
-  const [userId, setUserId] = useState("");
-  const [serviceId, setServiceId] = useState("");
+  const [selectedUserId, setUserId] = useState("");
+  const [selectedServiceId, setServiceId] = useState("");
+  const [selectedGroupId, setGroupId] = useState("");
+  const groupId = config.groups.some((group) => group.id === selectedGroupId)
+    ? selectedGroupId
+    : "";
+  const visibleUsers = config.users.filter((user) => !groupId || user.groupIds.includes(groupId));
+  const userId = visibleUsers.some((user) => user.id === selectedUserId) ? selectedUserId : "";
+  const serviceId = config.services.some((service) => service.id === selectedServiceId)
+    ? selectedServiceId
+    : "";
+
+  // Удаляем недопустимый выбор до расчёта, в том числе после замены конфигурации импортом.
+  if (selectedGroupId !== groupId) setGroupId(groupId);
+  if (selectedUserId !== userId) setUserId(userId);
+  if (selectedServiceId !== serviceId) setServiceId(serviceId);
 
   const result = userId && serviceId ? checkAccess(userId, serviceId) : null;
 
@@ -26,13 +40,36 @@ export const App = () => {
       <Stack gap="md">
         <Title order={1}>Симулятор политик доступа</Title>
         <NativeSelect
+          label="Группа"
+          value={groupId}
+          onChange={(event) => {
+            const nextGroupId = event.currentTarget.value;
+            setGroupId(nextGroupId);
+            if (
+              !config.users.some(
+                (user) =>
+                  user.id === userId && (!nextGroupId || user.groupIds.includes(nextGroupId)),
+              )
+            ) {
+              setUserId("");
+            }
+          }}
+          data={[
+            { value: "", label: "Все группы" },
+            ...config.groups.map((group) => ({ value: group.id, label: group.name })),
+          ]}
+        />
+        <NativeSelect
           label="Сотрудник"
+          description={
+            groupId && visibleUsers.length === 0 ? "В группе нет сотрудников" : undefined
+          }
           data-testid="user-select"
           value={userId}
           onChange={(event) => setUserId(event.currentTarget.value)}
           data={[
             { value: "", label: "Не выбран" },
-            ...config.users.map((user) => ({ value: user.id, label: user.name })),
+            ...visibleUsers.map((user) => ({ value: user.id, label: user.name })),
           ]}
         />
         <NativeSelect
